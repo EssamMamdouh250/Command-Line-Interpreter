@@ -1,8 +1,17 @@
-import java.util.List;
-
 public class Parser {
-    private String commandName;
-    private List<String> arguments;
+    private String command;
+    private String[] arguments;
 
-    // TODO: Add constructor, getters, setters, and parse method
+    public boolean parse(String input) {
+        // TODO: implement command parsing
+        return false;
+    }
+
+    public String getCommand() {
+        return command;
+    }
+
+    public String[] getArguments() {
+        return arguments;
+    }
 }
