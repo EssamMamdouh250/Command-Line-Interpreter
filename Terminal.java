@@ -1,146 +1,82 @@
-import java.nio.file.*;
-import java.util.*;
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ */
 
+package com.mycompany.terminal;
+import java.util.Scanner;
+import java.util.Arrays;
+import java.io.File;
+import java.io.IOException;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import java.util.zip.ZipInputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+
+// كلاس Parser
+class Parser {
+    String commandName;
+    String[] args;
+
+    public boolean parse(String s) {
+        if (s == null || s.trim().isEmpty())
+            return false;
+
+        String[] arr = s.trim().split("\\s+");
+        commandName =arr[0];
+        args = Arrays.copyOfRange(arr, 1, arr.length);
+        return true;
+    }
+
+    public String getCommandName() { return commandName; }
+    public String[] getArgs() { return args; }
+}
+
+// كلاس Terminal
 public class Terminal {
+    Parser p = new Parser();
 
-    public void execute(String command, String[] args) {
-        try {
-            switch (command) {
-                case "pwd":
-                    pwd();
-                    break;
+    public String pwd() {
+        return System.getProperty("user.dir");
+    }
 
-                case "cd":
-                    cd(args);
-                    break;
+    public void chooseCommandAction() {
+        String cmd = p.getCommandName();
+        String[] args = p.getArgs();
 
-                case "ls":
-                    ls();
-                    break;
-
-                case "mkdir":
-                    mkdir(args);
-                    break;
-
-                case "rmdir":
-                    rmdir(args);
-                    break;
-
-                case "touch":
-                    touch(args);
-                    break;
-
-                case "rm":
-                    rm(args);
-                    break;
-
-                case "cp":
-                    cp(args);
-                    break;
-
-                case "cp-r":
-                case "cp -r":
-                    cp_r(args);
-                    break;
-
-                case "cat":
-                    cat(args);
-                    break;
-
-                case "wc":
-                    wc(args);
-                    break;
-
-                case ">":
-                    // TODO
-                    break;
-
-                case ">>":
-                    // TODO
-                    break;
-
-                case "zip":
-                    zip(args);
-                    break;
-
-                case "unzip":
-                    unzip(args);
-                    break;
-
-                case "exit":
-                    System.out.println("Exiting Program CLI, Goodbye...");
-                    System.exit(0);
-                    break;
-
-                default:
-                    System.out.println("Error: Unknown command '" + command + "'");
-                    break;
-            }
-        } catch (Exception e) {
-            System.out.println("Error while executing command: " + e.getMessage());
+        switch (cmd) {
+            case "pwd":
+                System.out.println(pwd());
+                break;
+            default:
+                System.out.println("Unknown command!");
         }
     }
 
-    // ========== Commands skeleton ==========
+    public static void main(String[] args) {
+        Terminal t = new Terminal();
+        Scanner sc = new Scanner(System.in);
 
-    public String pwd() {
-        // TODO
-        return "pwd";
-    }
+        while (true) {
+            System.out.print(">> ");
+            String input = sc.nextLine();
 
-    public void cd(String[] args) {
-        // TODO
-    }
+            if (input.equals("exit"))
+                break;
 
-    public void ls() {
-        // TODO
-    }
+            if (t.p.parse(input))
+                t.chooseCommandAction();
+            else
+                System.out.println("Invalid command!");
+        }
 
-    public void mkdir(String[] args) {
-        // TODO
-    }
-
-    public void rmdir(String[] args) {
-        // TODO
-    }
-
-    public void touch(String[] args) {
-        // TODO
-    }
-
-    public void rm(String[] args) {
-        // TODO
-    }
-
-    public void cp(String[] args) {
-        // TODO
-    }
-
-    public void cp_r(String[] args) {
-        // TODO
-    }
-
-    public void cat(String[] args) {
-        // TODO
-    }
-
-    public void wc(String[] args) {
-        // TODO
-    }
-
-    public void redirectOutput(String command, String fileName) {
-        // TODO (for > redirection)
-    }
-
-    public void appendOutput(String command, String fileName) {
-        // TODO (for >> redirection)
-    }
-
-    public void zip(String[] args) {
-        // TODO
-    }
-
-    public void unzip(String[] args) {
-        // TODO
+        sc.close();
     }
 }
