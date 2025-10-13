@@ -20,7 +20,7 @@ import java.util.zip.ZipInputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 
-// كلاس Parser
+
 class Parser {
     String commandName;
     String[] args;
@@ -39,7 +39,7 @@ class Parser {
     public String[] getArgs() { return args; }
 }
 
-// كلاس Terminal
+
 public class Terminal {
     Parser p = new Parser();
 
