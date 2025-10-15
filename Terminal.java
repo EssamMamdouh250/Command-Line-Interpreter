@@ -1,8 +1,5 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- */
-
 package com.mycompany.terminal;
+
 import java.util.Scanner;
 import java.util.Arrays;
 import java.io.File;
@@ -20,17 +17,31 @@ import java.util.zip.ZipInputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 
+class Command {
+    String name;
+    String[] args;
+
+    public Command(String name, String[] args) {
+        this.name = name;
+        this.args = args;
+    }
+
+    public void execute() {
+        System.out.println("Command not implemented: " + name);
+    }
+}
+
 
 class Parser {
-    String commandName;
-    String[] args;
+    private String commandName;
+    private String[] args;
 
     public boolean parse(String s) {
         if (s == null || s.trim().isEmpty())
             return false;
 
         String[] arr = s.trim().split("\\s+");
-        commandName =arr[0];
+        commandName = arr[0];
         args = Arrays.copyOfRange(arr, 1, arr.length);
         return true;
     }
@@ -43,32 +54,47 @@ class Parser {
 public class Terminal {
     Parser p = new Parser();
 
-    public String pwd() {
-        return System.getProperty("user.dir");
+    public class PwdCommand extends Command {
+        public PwdCommand(String[] args) {
+            super("pwd", args);
+        }
+
+        @Override
+        public void execute() {
+            System.out.println(System.getProperty("user.dir"));
+        }
     }
 
+
     public void chooseCommandAction() {
-        String cmd = p.getCommandName();
+        String cmdName = p.getCommandName();
         String[] args = p.getArgs();
 
-        switch (cmd) {
+        Command cmd;
+
+        switch (cmdName) {
             case "pwd":
-                System.out.println(pwd());
+                cmd = new PwdCommand(args);
                 break;
             default:
-                System.out.println("Unknown command!");
+                cmd = new Command(cmdName, args);
+                break;
         }
+
+        cmd.execute();
     }
 
     public static void main(String[] args) {
         Terminal t = new Terminal();
         Scanner sc = new Scanner(System.in);
 
+        System.out.println("Simple Java Terminal. Type 'exit' to quit.");
+
         while (true) {
             System.out.print(">> ");
             String input = sc.nextLine();
 
-            if (input.equals("exit"))
+            if (input.equalsIgnoreCase("exit"))
                 break;
 
             if (t.p.parse(input))
