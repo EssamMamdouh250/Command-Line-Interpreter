@@ -221,6 +221,42 @@ public class Terminal {
 
         }
     }
+    public class CdCommand extends Command {
+    public CdCommand(String[] args) {
+        super("cd", args);
+    }
+
+    @Override
+    public void execute() {
+        try {
+            if (args.length == 0) {
+                System.setProperty("user.dir", System.getProperty("user.home"));
+            } else if (args.length == 1 && args[0].equals("..")) {
+                Path current = Path.of(System.getProperty("user.dir"));
+                Path parent = current.getParent();
+                if (parent != null)
+                    System.setProperty("user.dir", parent.toString());
+                else
+                    System.out.println("Already at root directory");
+            } else if (args.length == 1) {
+                Path newPath = Path.of(args[0]);
+                if (!newPath.isAbsolute()) {
+                    newPath = Path.of(System.getProperty("user.dir")).resolve(newPath);
+                }
+                if (Files.exists(newPath) && Files.isDirectory(newPath)) {
+                    System.setProperty("user.dir", newPath.normalize().toString());
+                } else {
+                    System.out.println("Invalid directory: " + newPath);
+                }
+            } else {
+                System.out.println("cd: too many arguments");
+            }
+        } catch (Exception e) {
+            System.out.println("cd error: " + e.getMessage());
+        }
+    }
+}
+
 
 
 
@@ -244,6 +280,9 @@ public class Terminal {
             case "rm":
                 cmd = new RmCommand(args);
                 break;
+            case "cd":    
+                cmd = new CdCommand(args);
+                break;    
             default:
                 cmd = new Command(cmdName, args);
                 break;
