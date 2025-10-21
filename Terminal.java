@@ -18,6 +18,7 @@ import java.util.zip.ZipOutputStream;
 import java.util.zip.ZipInputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.util.Comparator;
 
 class Command {
     String name;
@@ -257,6 +258,48 @@ public class Terminal {
             }
         }
     }
+        public class LsCommand extends Command {
+    public LsCommand(String[] args) {
+        super("ls", args);
+    }
+
+    @Override
+    public void execute() {
+        try {
+            int len = (args == null) ? 0 : args.length;
+
+            if (len > 0) {
+                System.out.println("ls takes no arguments");
+                return;
+            }
+
+            File currentDir = new File(System.getProperty("user.dir"));
+            File[] files = currentDir.listFiles();
+
+            if (files == null) {
+                System.out.println("Error reading directory contents");
+                return;
+            }
+
+            if (files.length == 0) {
+                System.out.println("(empty directory)");
+                return;
+            }
+
+            
+             Arrays.sort(files, Comparator.comparing(File::getName));
+
+            for (File f : files) {
+                System.out.println(f.getName());
+            }
+
+        } catch (Exception e) {
+            System.out.println("ls error: " + e.getMessage());
+        }
+    }
+}
+
+    
 
     public class ZipCommand extends Command {
         public ZipCommand(String[] args) {
@@ -399,6 +442,10 @@ public class Terminal {
             case "cd":
                 cmd = new CdCommand(args);
                 break;
+            case "ls":
+                cmd = new LsCommand(args);
+                break;
+                    
             case "zip":
                 cmd = new ZipCommand(args);
                 break;
