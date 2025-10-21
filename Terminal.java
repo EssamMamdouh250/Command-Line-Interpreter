@@ -131,7 +131,6 @@ public class Terminal {
         }
     }
 
-
     public class CpRCommand extends Command {
         public CpRCommand(String[] args) {
             super("cp -r", args);
@@ -194,6 +193,7 @@ public class Terminal {
             }
         }
     }
+
     public class RmCommand extends Command {
         public RmCommand(String[] args) {
             super("rm", args);
@@ -221,46 +221,162 @@ public class Terminal {
 
         }
     }
-    public class CdCommand extends Command {
-    public CdCommand(String[] args) {
-        super("cd", args);
-    }
 
-    @Override
-    public void execute() {
-        try {
-            if (args.length == 0) {
-                System.setProperty("user.dir", System.getProperty("user.home"));
-            } else if (args.length == 1 && args[0].equals("..")) {
-                Path current = Path.of(System.getProperty("user.dir"));
-                Path parent = current.getParent();
-                if (parent != null)
-                    System.setProperty("user.dir", parent.toString());
-                else
-                    System.out.println("Already at root directory");
-            } else if (args.length == 1) {
-                Path newPath = Path.of(args[0]);
-                if (!newPath.isAbsolute()) {
-                    newPath = Path.of(System.getProperty("user.dir")).resolve(newPath);
-                }
-                if (Files.exists(newPath) && Files.isDirectory(newPath)) {
-                    System.setProperty("user.dir", newPath.normalize().toString());
+    public class CdCommand extends Command {
+        public CdCommand(String[] args) {
+            super("cd", args);
+        }
+
+        @Override
+        public void execute() {
+            try {
+                if (args.length == 0) {
+                    System.setProperty("user.dir", System.getProperty("user.home"));
+                } else if (args.length == 1 && args[0].equals("..")) {
+                    Path current = Path.of(System.getProperty("user.dir"));
+                    Path parent = current.getParent();
+                    if (parent != null)
+                        System.setProperty("user.dir", parent.toString());
+                    else
+                        System.out.println("Already at root directory");
+                } else if (args.length == 1) {
+                    Path newPath = Path.of(args[0]);
+                    if (!newPath.isAbsolute()) {
+                        newPath = Path.of(System.getProperty("user.dir")).resolve(newPath);
+                    }
+                    if (Files.exists(newPath) && Files.isDirectory(newPath)) {
+                        System.setProperty("user.dir", newPath.normalize().toString());
+                    } else {
+                        System.out.println("Invalid directory: " + newPath);
+                    }
                 } else {
-                    System.out.println("Invalid directory: " + newPath);
+                    System.out.println("cd: too many arguments");
                 }
-            } else {
-                System.out.println("cd: too many arguments");
+            } catch (Exception e) {
+                System.out.println("cd error: " + e.getMessage());
             }
-        } catch (Exception e) {
-            System.out.println("cd error: " + e.getMessage());
         }
     }
-}
+
+    public class ZipCommand extends Command {
+        public ZipCommand(String[] args) {
+            super("zip", args);
+        }
+
+        @Override
+        public void execute() {
+            try {
+                if (args.length < 2) {
+                    System.out.println("zip <archive.zip> <files...>");
+                    return;
+                }
+
+                boolean recursive = args[0].equals("-r");
+                int startIndex = recursive ? 2 : 1;
+                String zipFileName = args[recursive ? 1 : 0];
+
+                try (FileOutputStream fos = new FileOutputStream(zipFileName);
+                     ZipOutputStream zos = new ZipOutputStream(fos)) {
+
+                    for (int i = startIndex; i < args.length; i++) {
+                        File file = new File(args[i]);
+                        if (file.exists()) {
+                            if (file.isDirectory() && recursive)
+                                addDirToZip(file, file.getName(), zos);
+                            else if (file.isFile())
+                                addFileToZip(file, zos);
+                        } else {
+                            System.out.println("File not found: " + args[i]);
+                        }
+                    }
+                }
+                System.out.println("Created " + zipFileName);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void addFileToZip(File file, ZipOutputStream zos) throws IOException {
+            try (FileInputStream fis = new FileInputStream(file)) {
+                ZipEntry entry = new ZipEntry(file.getName());
+                zos.putNextEntry(entry);
+                byte[] buffer = new byte[1024];
+                int len;
+                while ((len = fis.read(buffer)) > 0)
+                    zos.write(buffer, 0, len);
+                zos.closeEntry();
+            }
+        }
+
+        private void addDirToZip(File folder, String parent, ZipOutputStream zos) throws IOException {
+            for (File file : folder.listFiles()) {
+                if (file.isDirectory()) {
+                    addDirToZip(file, parent + "/" + file.getName(), zos);
+                } else {
+                    try (FileInputStream fis = new FileInputStream(file)) {
+                        ZipEntry entry = new ZipEntry(parent + "/" + file.getName());
+                        zos.putNextEntry(entry);
+                        byte[] buffer = new byte[1024];
+                        int len;
+                        while ((len = fis.read(buffer)) > 0)
+                            zos.write(buffer, 0, len);
+                        zos.closeEntry();
+                    }
+                }
+            }
+        }
+    }
+
+    public class UnzipCommand extends Command {
+
+        public UnzipCommand(String[] args) {
+            super("unzip", args);
+        }
+
+        @Override
+        public void execute() {
+            if (args.length < 1) {
+                System.out.println("Usage: unzip <archive.zip> [-d destination]");
+                return;
+            }
+
+            String zipFile = args[0];
+            String destDir = ".";
+
+            if (args.length == 3 && args[1].equals("-d"))
+                destDir = args[2];
+
+            File dir = new File(destDir);
+            if (!dir.exists())
+                dir.mkdirs();
+
+            try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    File newFile = new File(dir, entry.getName());
+
+                    if (entry.isDirectory()) {
+                        newFile.mkdirs();
+                    } else {
+                        new File(newFile.getParent()).mkdirs();
+                        try (FileOutputStream fos = new FileOutputStream(newFile)) {
+                            byte[] buffer = new byte[1024];
+                            int len;
+                            while ((len = zis.read(buffer)) > 0)
+                                fos.write(buffer, 0, len);
+                        }
+                    }
+                    zis.closeEntry();
+                }
+                System.out.println("Unzipped successfully to " + destDir);
+            } catch (IOException e) {
+                System.out.println("Error while unzipping: " + e.getMessage());
+            }
+        }
+    }
 
 
-
-
-            public void chooseCommandAction() {
+    public void chooseCommandAction() {
         String cmdName = p.getCommandName();
         String[] args = p.getArgs();
 
@@ -280,9 +396,15 @@ public class Terminal {
             case "rm":
                 cmd = new RmCommand(args);
                 break;
-            case "cd":    
+            case "cd":
                 cmd = new CdCommand(args);
-                break;    
+                break;
+            case "zip":
+                cmd = new ZipCommand(args);
+                break;
+            case "unzip":
+                cmd = new UnzipCommand(args);
+                break;
             default:
                 cmd = new Command(cmdName, args);
                 break;
@@ -291,26 +413,25 @@ public class Terminal {
         cmd.execute();
     }
 
-        public static void main(String[] args) {
-            Terminal t = new Terminal();
-            Scanner sc = new Scanner(System.in);
+    public static void main(String[] args) {
+        Terminal t = new Terminal();
+        Scanner sc = new Scanner(System.in);
 
-            System.out.println("Simple Java Terminal. Type 'exit' to quit.");
+        System.out.println("Simple Java Terminal. Type 'exit' to quit.");
 
-            while (true) {
-                System.out.print(">> ");
-                String input = sc.nextLine();
+        while (true) {
+            System.out.print(">> ");
+            String input = sc.nextLine();
 
-                if (input.equalsIgnoreCase("exit"))
-                    break;
+            if (input.equalsIgnoreCase("exit"))
+                break;
 
-                if (t.p.parse(input))
-                    t.chooseCommandAction();
-                else
-                    System.out.println("Invalid command!");
-            }
-
-            sc.close();
+            if (t.p.parse(input))
+                t.chooseCommandAction();
+            else
+                System.out.println("Invalid command!");
         }
-}
 
+        sc.close();
+    }
+}
