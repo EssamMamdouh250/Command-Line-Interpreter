@@ -1,5 +1,6 @@
 package com.mycompany.terminal;
 
+
 import java.io.*;
 import java.util.*;
 import java.nio.file.Files;
@@ -530,103 +531,247 @@ public class PwdCommand extends Command {
             return null;
         }
     }
+public class MkdirCommand extends Command {
+    public MkdirCommand(String[] args) {
+        super("mkdir", args);
+    }
 
-
- public void chooseCommandAction() {
-        String cmdName = p.getCommandName();
-        String[] args = p.getArgs();
-        String[] redirectOutput = null;
-
-        boolean redirect = false;
-        boolean append = false;
-        int redirectIndex = -1;
-
-        for (int i = 0; i < args.length; i++) {
-            if (args[i].equals(">")) {
-                redirect = true;
-                append = false;
-                redirectIndex = i;
-                break;
-            } else if (args[i].equals(">>")) {
-                redirect = true;
-                append = true;
-                redirectIndex = i;
-                break;
-            }
+    @Override
+    public String[] execute() {
+        if (args == null || args.length == 0) {
+            System.out.println("Usage: mkdir <dir1> [dir2 dir3 ...]");
+            return null;
         }
 
-        String[] actualArgs = args;
-        String redirectFile = null;
+        for (String dirName : args) {
+            try {
+                Path dirPath = Path.of(dirName);
+                if (!dirPath.isAbsolute()) {
+                    dirPath = Path.of(System.getProperty("user.dir")).resolve(dirPath);
+                }
 
-        if (redirect) {
-            if (redirectIndex + 1 >= args.length) {
-                System.out.println("Error: Missing file name after redirect.");
-                return;
+                if (Files.exists(dirPath)) {
+                    System.out.println("Directory already exists: " + dirPath);
+                } else {
+                    Files.createDirectories(dirPath);
+                    System.out.println("Created directory: " + dirPath);
+                }
+            } catch (SecurityException e) {
+                System.out.println("Permission denied creating directory: " + dirName);
+            } catch (IOException e) {
+                System.out.println("I/O error creating directory " + dirName + ": " + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("Unexpected error creating directory " + dirName + ": " + e.getMessage());
+            }
+        }
+        return null;
+    }
+}
+public class RmdirCommand extends Command {
+    public RmdirCommand(String[] args) {
+        super("rmdir", args);
+    }
+
+    @Override
+    public String[] execute() {
+        Path currentDir = Path.of(System.getProperty("user.dir"));
+
+        try {
+            if (args == null || args.length == 0) {
+                System.out.println("Usage: rmdir <dir> OR rmdir *");
+                return null;
             }
 
-            redirectFile = args[redirectIndex + 1];
-            actualArgs = Arrays.copyOfRange(args, 0, redirectIndex);
+            if (args.length == 1 && args[0].equals("*")) {
+                try (Stream<Path> paths = Files.list(currentDir)) {
+                    paths.forEach(path -> {
+                        try {
+                            if (Files.isDirectory(path) && Files.list(path).findAny().isEmpty()) {
+                                Files.delete(path);
+                                System.out.println("Removed empty directory: " + path.getFileName());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("Error removing " + path.getFileName() + ": " + e.getMessage());
+                        }
+                    });
+                }
+                return null;
+            }
+
+            if (args.length == 1) {
+                Path dirPath = Path.of(args[0]);
+                if (!dirPath.isAbsolute()) {
+                    dirPath = currentDir.resolve(dirPath);
+                }
+
+                if (!Files.exists(dirPath)) {
+                    System.out.println("Directory not found: " + dirPath);
+                    return null;
+                }
+
+                if (!Files.isDirectory(dirPath)) {
+                    System.out.println("Not a directory: " + dirPath);
+                    return null;
+                }
+
+                try (Stream<Path> stream = Files.list(dirPath)) {
+                    if (stream.findAny().isPresent()) {
+                        System.out.println("Directory is not empty: " + dirPath);
+                        return null;
+                    }
+                }
+
+                Files.delete(dirPath);
+                System.out.println("Removed directory: " + dirPath);
+            } else {
+                System.out.println("Invalid arguments for rmdir.");
+            }
+
+        } catch (SecurityException e) {
+            System.out.println("Permission denied while removing directory.");
+        } catch (IOException e) {
+            System.out.println("I/O error removing directory: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("Unexpected error: " + e.getMessage());
+        }
+        return null;
+    }
+}
+public class TouchCommand extends Command {
+    public TouchCommand(String[] args) {
+        super("touch", args);
+    }
+
+    @Override
+    public String[] execute() {
+        if (args == null || args.length == 0) {
+            System.out.println("Usage: touch <file1> [file2 file3 ...]");
+            return null;
+        }
+
+        for (String fileName : args) {
+            try {
+                Path filePath = Path.of(fileName);
+                if (!filePath.isAbsolute()) {
+                    filePath = Path.of(System.getProperty("user.dir")).resolve(filePath);
+                }
+
+                if (Files.exists(filePath)) {
+                    System.out.println("File already exists: " + filePath);
+                } else {
+                    Files.createFile(filePath);
+                    System.out.println("Created file: " + filePath);
+                }
+            } catch (SecurityException e) {
+                System.out.println("Permission denied creating file: " + fileName);
+            } catch (IOException e) {
+                System.out.println("I/O error creating file " + fileName + ": " + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("Unexpected error creating file " + fileName + ": " + e.getMessage());
+            }
+        }
+        return null;
+    }
+}
+
+
+
+    public void chooseCommandAction() {
+        String cmdName = p.getCommandName();
+        String[] args = p.getArgs();
+        String[] redirectOutput;
+        int redirectIndex = 0;
+        redirect = false;
+
+        // check if there is a redirect command
+        for (int i = 0; i < args.length; i++){
+            if (args[i].equals(">")){
+                redirect = true;
+                redirectIndex = i;
+            }
         }
 
         Command cmd;
+
         switch (cmdName) {
             case "pwd":
-                cmd = new PwdCommand(actualArgs);
+                cmd = new PwdCommand(args);
                 break;
             case "cp":
-                if (actualArgs != null && actualArgs.length > 0 && "-r".equals(actualArgs[0])) {
-                    cmd = new CpRCommand(actualArgs);
+                if (args != null && args.length > 0 && "-r".equals(args[0])) {
+                    cmd = new CpRCommand(args);
                 } else {
-                    cmd = new CpCommand(actualArgs);
+                    cmd = new CpCommand(args);
                 }
                 break;
             case "rm":
-                cmd = new RmCommand(actualArgs);
+                cmd = new RmCommand(args);
                 break;
             case "cd":
-                cmd = new CdCommand(actualArgs);
+                cmd = new CdCommand(args);
                 break;
             case "ls":
-                cmd = new LsCommand(actualArgs);
+                cmd = new LsCommand(args);
                 break;
+                    
             case "zip":
-                cmd = new ZipCommand(actualArgs);
+                cmd = new ZipCommand(args);
                 break;
             case "unzip":
-                cmd = new UnzipCommand(actualArgs);
+                cmd = new UnzipCommand(args);
                 break;
             case "cat":
-                cmd = new CatCommand(actualArgs);
+                cmd = new CatCommand(args);
                 break;
             case "wc":
-                cmd = new WcCommand(actualArgs);
+                cmd = new WcCommand(args);
+                break;
+            case "mkdir":
+                cmd = new MkdirCommand(args);
+                break;
+            case "rmdir":
+                cmd = new RmdirCommand(args);
+                break;
+            case "touch":
+                cmd = new TouchCommand(args);
                 break;
             default:
-                cmd = new Command(cmdName, actualArgs);
+                cmd = new Command(cmdName, args);
                 break;
         }
 
+        // store the redirect output
         redirectOutput = cmd.execute();
-
-        if (redirect && redirectFile != null) {
-            if (redirectOutput == null || redirectOutput.length == 0) {
-                System.out.println("No output to redirect.");
+        // check if there is a redirect and if so redirect to file
+        if (redirect){
+            if (redirectOutput.length == 0 || redirectOutput == null){
+                System.out.println("no output to redirect");
+            }
+            else if (args.length == redirectIndex + 1){
+                System.out.println("no file provided to redirect to");
                 return;
             }
-
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(redirectFile, append))) {
-                for (int i = 0; i < redirectOutput.length; i++) {
-                    writer.write(redirectOutput[i]);
-                    if (i < redirectOutput.length - 1) writer.newLine();
+            else {
+                try {
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(args[redirectIndex + 1]));
+                    if (redirectOutput.length == 1){
+                        writer.write(redirectOutput[0]);
+                    }
+                    else {
+                        writer.write(redirectOutput[0]);
+                        for (int i = 1; i < redirectOutput.length; i++){
+                            writer.write("\n" + redirectOutput[i]);
+                        }
+                    }
+                    writer.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
-                System.out.println((append ? "Appended" : "Written") + " to " + redirectFile);
-            } catch (IOException e) {
-                System.out.println("Error writing to file: " + e.getMessage());
             }
+
         }
     }
 
-    
     public static void main(String[] args) {
         Terminal t = new Terminal();
         Scanner sc = new Scanner(System.in);
