@@ -678,18 +678,26 @@ public class TouchCommand extends Command {
 
     public void chooseCommandAction() {
         String cmdName = p.getCommandName();
-        String[] args = p.getArgs();
-        String[] redirectOutput;
-        int redirectIndex = 0;
-        redirect = false;
+    String[] args = p.getArgs();
+    String[] redirectOutput;
+    boolean redirect = false;
+    boolean append = false;
+    int redirectIndex = -1;
 
-        // check if there is a redirect command
-        for (int i = 0; i < args.length; i++){
-            if (args[i].equals(">")){
-                redirect = true;
-                redirectIndex = i;
-            }
+    // check if there is a redirect or append command
+    for (int i = 0; i < args.length; i++) {
+        if (args[i].equals(">")) {
+            redirect = true;
+            append = false;
+            redirectIndex = i;
+            break;
+        } else if (args[i].equals(">>")) {
+            redirect = true;
+            append = true;
+            redirectIndex = i;
+            break;
         }
+    }
 
         Command cmd;
 
