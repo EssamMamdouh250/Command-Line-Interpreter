@@ -532,93 +532,101 @@ public class PwdCommand extends Command {
     }
 
 
-    public void chooseCommandAction() {
+ public void chooseCommandAction() {
         String cmdName = p.getCommandName();
         String[] args = p.getArgs();
-        String[] redirectOutput;
-        int redirectIndex = 0;
-        redirect = false;
+        String[] redirectOutput = null;
 
-        // check if there is a redirect command
-        for (int i = 0; i < args.length; i++){
-            if (args[i].equals(">")){
+        boolean redirect = false;
+        boolean append = false;
+        int redirectIndex = -1;
+
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equals(">")) {
                 redirect = true;
+                append = false;
                 redirectIndex = i;
+                break;
+            } else if (args[i].equals(">>")) {
+                redirect = true;
+                append = true;
+                redirectIndex = i;
+                break;
             }
+        }
+
+        String[] actualArgs = args;
+        String redirectFile = null;
+
+        if (redirect) {
+            if (redirectIndex + 1 >= args.length) {
+                System.out.println("Error: Missing file name after redirect.");
+                return;
+            }
+
+            redirectFile = args[redirectIndex + 1];
+            actualArgs = Arrays.copyOfRange(args, 0, redirectIndex);
         }
 
         Command cmd;
-
         switch (cmdName) {
             case "pwd":
-                cmd = new PwdCommand(args);
+                cmd = new PwdCommand(actualArgs);
                 break;
             case "cp":
-                if (args != null && args.length > 0 && "-r".equals(args[0])) {
-                    cmd = new CpRCommand(args);
+                if (actualArgs != null && actualArgs.length > 0 && "-r".equals(actualArgs[0])) {
+                    cmd = new CpRCommand(actualArgs);
                 } else {
-                    cmd = new CpCommand(args);
+                    cmd = new CpCommand(actualArgs);
                 }
                 break;
             case "rm":
-                cmd = new RmCommand(args);
+                cmd = new RmCommand(actualArgs);
                 break;
             case "cd":
-                cmd = new CdCommand(args);
+                cmd = new CdCommand(actualArgs);
                 break;
             case "ls":
-                cmd = new LsCommand(args);
+                cmd = new LsCommand(actualArgs);
                 break;
-                    
             case "zip":
-                cmd = new ZipCommand(args);
+                cmd = new ZipCommand(actualArgs);
                 break;
             case "unzip":
-                cmd = new UnzipCommand(args);
+                cmd = new UnzipCommand(actualArgs);
                 break;
             case "cat":
-                cmd = new CatCommand(args);
+                cmd = new CatCommand(actualArgs);
                 break;
             case "wc":
-                cmd = new WcCommand(args);
+                cmd = new WcCommand(actualArgs);
                 break;
             default:
-                cmd = new Command(cmdName, args);
+                cmd = new Command(cmdName, actualArgs);
                 break;
         }
 
-        // store the redirect output
         redirectOutput = cmd.execute();
-        // check if there is a redirect and if so redirect to file
-        if (redirect){
-            if (redirectOutput.length == 0 || redirectOutput == null){
-                System.out.println("no output to redirect");
-            }
-            else if (args.length == redirectIndex + 1){
-                System.out.println("no file provided to redirect to");
+
+        if (redirect && redirectFile != null) {
+            if (redirectOutput == null || redirectOutput.length == 0) {
+                System.out.println("No output to redirect.");
                 return;
             }
-            else {
-                try {
-                    BufferedWriter writer = new BufferedWriter(new FileWriter(args[redirectIndex + 1]));
-                    if (redirectOutput.length == 1){
-                        writer.write(redirectOutput[0]);
-                    }
-                    else {
-                        writer.write(redirectOutput[0]);
-                        for (int i = 1; i < redirectOutput.length; i++){
-                            writer.write("\n" + redirectOutput[i]);
-                        }
-                    }
-                    writer.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
 
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(redirectFile, append))) {
+                for (int i = 0; i < redirectOutput.length; i++) {
+                    writer.write(redirectOutput[i]);
+                    if (i < redirectOutput.length - 1) writer.newLine();
+                }
+                System.out.println((append ? "Appended" : "Written") + " to " + redirectFile);
+            } catch (IOException e) {
+                System.out.println("Error writing to file: " + e.getMessage());
+            }
         }
     }
 
+    
     public static void main(String[] args) {
         Terminal t = new Terminal();
         Scanner sc = new Scanner(System.in);
