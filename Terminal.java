@@ -1,6 +1,5 @@
 package com.mycompany.terminal;
 
-
 import java.io.*;
 import java.util.*;
 import java.nio.file.Files;
@@ -15,6 +14,8 @@ import java.util.zip.ZipInputStream;
 class Command {
     String name;
     String[] args;
+    protected boolean redirect = false;
+
 
     public Command(String name, String[] args) {
         this.name = name;
@@ -272,52 +273,57 @@ public class PwdCommand extends Command {
             super("ls", args);
         }
 
-        @Override
-        public String[] execute() {
-            List<String> redirectOutput = new ArrayList<>();
-            try {
-                int len = (args == null) ? 0 : args.length;
-
-                if (redirect){
-                    if (args.length == 1){
-                        System.out.println("no file provided to redirect to");
-                        redirect = false;
-                        return null;
-                    }
-                }
-                else if (len > 0){
-                    System.out.println("ls takes no arguments");
-                    return null;
-                }
-
-                File currentDir = new File(System.getProperty("user.dir"));
-                File[] files = currentDir.listFiles();
-
-                if (files == null) {
-                    System.out.println("Error reading directory contents");
-                    return null;
-                }
-
-                if (files.length == 0) {
-                    System.out.println("(empty directory)");
-                    String[] redirectOutputempty = {""};
-                    return redirectOutputempty;
-                }
-
-
-                 Arrays.sort(files, Comparator.comparing(File::getName));
-
-                for (File f : files) {
-                    System.out.println(f.getName());
-                    redirectOutput.add(f.getName());
-                }
-                return redirectOutput.toArray(new String[redirectOutput.size()]);
-
-            } catch (Exception e) {
-                System.out.println("ls error: " + e.getMessage());
+@Override
+public String[] execute() {
+    List<String> redirectOutput = new ArrayList<>();
+    try {
+        int len = 0;
+       
+        if (args != null) {
+            for (String arg : args) {
+                if (arg.equals(">") || arg.equals(">>")) break;
+                len++;
             }
+        }
+
+        if (len > 0) {
+            System.out.println("ls takes no arguments");
             return null;
         }
+
+        File currentDir = new File(System.getProperty("user.dir"));
+        File[] files = currentDir.listFiles();
+
+        if (files == null) {
+            System.out.println("Error reading directory contents");
+            return null;
+        }
+
+        if (files.length == 0) {
+            System.out.println("(empty directory)");
+            String[] redirectOutputEmpty = {""};
+            return redirectOutputEmpty;
+        }
+
+        Arrays.sort(files, Comparator.comparing(File::getName));
+
+        for (File f : files) {
+            if (!redirect) {
+                System.out.println(f.getName());
+        }
+            redirectOutput.add(f.getName());
+    }
+
+
+
+        return redirectOutput.toArray(new String[0]);
+
+    } catch (Exception e) {
+        System.out.println("ls error: " + e.getMessage());
+    }
+    return null;
+}
+
     }
 
     public class CatCommand extends Command {
@@ -676,15 +682,15 @@ public class TouchCommand extends Command {
 
 
 
-    public void chooseCommandAction() {
-        String cmdName = p.getCommandName();
+public void chooseCommandAction() {
+    String cmdName = p.getCommandName();
     String[] args = p.getArgs();
-    String[] redirectOutput;
+    String[] redirectOutput = null;
     boolean redirect = false;
     boolean append = false;
     int redirectIndex = -1;
 
-    // check if there is a redirect or append command
+    // Detect redirection or append
     for (int i = 0; i < args.length; i++) {
         if (args[i].equals(">")) {
             redirect = true;
@@ -699,86 +705,55 @@ public class TouchCommand extends Command {
         }
     }
 
-        Command cmd;
+    // Create correct command object
+    Command cmd;
+    switch (cmdName) {
+        case "pwd": cmd = new PwdCommand(args); break;
+        case "ls": cmd = new LsCommand(args); break;
+        case "cd": cmd = new CdCommand(args); break;
+        case "touch": cmd = new TouchCommand(args); break;
+        case "mkdir": cmd = new MkdirCommand(args); break;
+        case "rmdir": cmd = new RmdirCommand(args); break;
+        case "cat": cmd = new CatCommand(args); break;
+        case "wc": cmd = new WcCommand(args); break;
+        case "cp":
+            if (args != null && args.length > 0 && "-r".equals(args[0])) {
+                cmd = new CpRCommand(args);
+            } else {
+                cmd = new CpCommand(args);
+            }
+            break;
+        case "rm": cmd = new RmCommand(args); break;
+        case "zip": cmd = new ZipCommand(args); break;
+        case "unzip": cmd = new UnzipCommand(args); break;
+        default: cmd = new Command(cmdName, args); break;
+    }
+    cmd.redirect = redirect;
 
-        switch (cmdName) {
-            case "pwd":
-                cmd = new PwdCommand(args);
-                break;
-            case "cp":
-                if (args != null && args.length > 0 && "-r".equals(args[0])) {
-                    cmd = new CpRCommand(args);
-                } else {
-                    cmd = new CpCommand(args);
-                }
-                break;
-            case "rm":
-                cmd = new RmCommand(args);
-                break;
-            case "cd":
-                cmd = new CdCommand(args);
-                break;
-            case "ls":
-                cmd = new LsCommand(args);
-                break;
-                    
-            case "zip":
-                cmd = new ZipCommand(args);
-                break;
-            case "unzip":
-                cmd = new UnzipCommand(args);
-                break;
-            case "cat":
-                cmd = new CatCommand(args);
-                break;
-            case "wc":
-                cmd = new WcCommand(args);
-                break;
-            case "mkdir":
-                cmd = new MkdirCommand(args);
-                break;
-            case "rmdir":
-                cmd = new RmdirCommand(args);
-                break;
-            case "touch":
-                cmd = new TouchCommand(args);
-                break;
-            default:
-                cmd = new Command(cmdName, args);
-                break;
+
+    // Execute command
+    redirectOutput = cmd.execute();
+
+    // Handle redirection
+    if (redirect && redirectOutput != null && redirectOutput.length > 0) {
+        if (args.length <= redirectIndex + 1) {
+            System.out.println("no file provided to redirect to");
+            return;
         }
 
-        // store the redirect output
-        redirectOutput = cmd.execute();
-        // check if there is a redirect and if so redirect to file
-        if (redirect){
-            if (redirectOutput.length == 0 || redirectOutput == null){
-                System.out.println("no output to redirect");
+        Path outFile = Path.of(args[redirectIndex + 1]);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outFile.toFile(), append))) {
+            for (int i = 0; i < redirectOutput.length; i++) {
+                writer.write(redirectOutput[i]);
+                if (i < redirectOutput.length - 1) writer.newLine();
             }
-            else if (args.length == redirectIndex + 1){
-                System.out.println("no file provided to redirect to");
-                return;
-            }
-            else {
-                try {
-                    BufferedWriter writer = new BufferedWriter(new FileWriter(args[redirectIndex + 1]));
-                    if (redirectOutput.length == 1){
-                        writer.write(redirectOutput[0]);
-                    }
-                    else {
-                        writer.write(redirectOutput[0]);
-                        for (int i = 1; i < redirectOutput.length; i++){
-                            writer.write("\n" + redirectOutput[i]);
-                        }
-                    }
-                    writer.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
+            System.out.println("Output redirected to " + outFile);
+        } catch (IOException e) {
+            System.out.println("Redirect error: " + e.getMessage());
         }
     }
+}
+
 
     public static void main(String[] args) {
         Terminal t = new Terminal();
