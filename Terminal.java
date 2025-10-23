@@ -86,19 +86,30 @@ public class PwdCommand extends Command {
     @Override
     public String[] execute() {
         
-        if (args != null && args.length > 0) {
+        int len = 0;
+        if (args != null) {
+            for (String arg : args) {
+                if (arg.equals(">") || arg.equals(">>")) break;
+                len++;
+            }
+        }
+
+        if (len > 0) {
             System.out.println("pwd takes no arguments");
             return null;
         }
 
         
         String currentDir = System.getProperty("user.dir");
-        System.out.println(currentDir);
+        if (!redirect) {
+            System.out.println(currentDir);
+        }
 
         String[] redirectOutput = {currentDir};
         return redirectOutput;
     }
 }
+
 
 
     public class CpCommand extends Command {
